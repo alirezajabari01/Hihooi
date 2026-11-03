@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hihooi Dashboard</title>
+  <style>
+    :root { --bg:#0f1419; --panel:#1a2332; --text:#e7ecf3; --muted:#8b9bb4; --accent:#3d8bfd; --ok:#3dd68c; --bad:#ff6b6b; --line:#243044; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background: linear-gradient(160deg,#0f1419,#152033 50%,#101820); color:var(--text); }
+    header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+    header h1 { margin:0; font-size:1.35rem; letter-spacing:.02em; }
+    header .badge { font-size:.75rem; padding:.25rem .55rem; border-radius:999px; background:#243044; color:var(--muted); }
+    nav { display:flex; gap:.5rem; padding:.75rem 1.5rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+    nav button { background:transparent; border:1px solid var(--line); color:var(--text); padding:.45rem .8rem; border-radius:.5rem; cursor:pointer; }
+    nav button.active { background:var(--accent); border-color:var(--accent); }
+    main { padding:1.25rem 1.5rem 2rem; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:.75rem; padding:1rem; }
+    .card h3 { margin:0 0 .35rem; font-size:.8rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .card .val { font-size:1.6rem; font-weight:650; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.55rem .4rem; border-bottom:1px solid var(--line); font-size:.92rem; }
+    th { color:var(--muted); font-weight:600; }
+    .ok { color:var(--ok); } .bad { color:var(--bad); }
+    .muted { color:var(--muted); }
+    .panel { display:none; } .panel.active { display:block; }
+    ul.errors { margin:0; padding-left:1.1rem; max-height:320px; overflow:auto; }
+    @media (max-width:640px){ .card .val{font-size:1.25rem;} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hihooi Monitoring</h1>
+    <span class="badge" id="status">connecting…</span>
+  </header>
+  <nav>
+    <button class="active" data-tab="overview">Overview</button>
+    <button data-tab="replicas">Replicas</button>
+    <button data-tab="routing">Query Routing</button>
+    <button data-tab="tx">Transactions</button>
+    <button data-tab="errors">Errors</button>
+  </nav>
+  <main>
+    <section id="overview" class="panel active">
+      <div class="grid" id="kpi"></div>
+      <p class="muted" id="na" style="margin-top:1rem"></p>
+    </section>
+    <section id="replicas" class="panel"><div class="card"><table><thead><tr><th>Id</th><th>Status</th><th>Applied TSID</th><th>Lag</th><th>Inflight</th><th>Failures</th></tr></thead><tbody id="repBody"></tbody></table></div></section>
+    <section id="routing" class="panel"><div class="card"><table><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody id="routeBody"></tbody></table><h3 style="margin-top:1rem">Reads by Extension</h3><table><thead><tr><th>Extension</th><th>Reads</th></tr></thead><tbody id="extReadBody"></tbody></table></div></section>
+    <section id="tx" class="panel"><div class="grid" id="txKpi"></div></section>
+    <section id="errors" class="panel"><div class="card"><ul class="errors" id="errList"></ul></div></section>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+  <script>
+    const tabs = document.querySelectorAll('nav button');
+    tabs.forEach(b => b.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(b.dataset.tab).classList.add('active');
+    }));
+
+    function render(m) {
+      const status = document.getElementById('status');
+      if (!m || m.available === false) {
+        status.textContent = 'Not Available';
+        document.getElementById('na').textContent = (m && m.reason) ? m.reason : 'Metrics Not Available';
+        document.getElementById('kpi').innerHTML = '';
+        return;
+      }
+      status.textContent = 'live';
+      document.getElementById('na').textContent = '';
+      const kpi = [
+        ['Commits', m.commits], ['Rollbacks', m.rollbacks], ['Failed Applies', m.failedApplies],
+        ['Primary Reads', m.primaryReads], ['Extension Reads', m.extensionReads], ['Fallbacks', m.primaryFallbacks],
+        ['Conflicts', m.conflictsDetected], ['Parallel Starts', m.parallelAppliesStarted], ['Latest TSID', m.latestTsId]
+      ];
+      document.getElementById('kpi').innerHTML = kpi.map(([h,v]) => `<div class="card"><h3>${h}</h3><div class="val">${v ?? 0}</div></div>`).join('');
+      document.getElementById('txKpi').innerHTML = kpi.slice(0,3).map(([h,v]) => `<div class="card"><h3>${h}</h3><div class="val">${v ?? 0}</div></div>`).join('');
+      const reps = m.extensions || [];
+      document.getElementById('repBody').innerHTML = reps.map(e => `<tr><td>${e.id}</td><td class="${e.isOnline?'ok':'bad'}">${e.isOnline?'Online':'Offline'}</td><td>${e.appliedTsId}</td><td>${e.lag}</td><td>${e.inflightReads}</td><td>${e.applyFailures}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No replicas</td></tr>';
+      const reasons = m.routeReasons || {};
+      document.getElementById('routeBody').innerHTML = Object.keys(reasons).map(k => `<tr><td>${k}</td><td>${reasons[k]}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">No routing data yet</td></tr>';
+      const byExt = m.readsByExtension || {};
+      document.getElementById('extReadBody').innerHTML = Object.keys(byExt).map(k => `<tr><td>${k}</td><td>${byExt[k]}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">No extension reads yet</td></tr>';
+      const errs = m.errors || [];
+      document.getElementById('errList').innerHTML = errs.length ? errs.map(e => `<li>${e}</li>`).join('') : '<li class="muted">No errors</li>';
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch('/api/metrics');
+        render(await r.json());
+      } catch { render({ available:false, reason:'API unreachable' }); }
+    }
+    poll(); setInterval(poll, 2000);
+
+    try {
+      const conn = new signalR.HubConnectionBuilder().withUrl('/hubs/metrics').withAutomaticReconnect().build();
+      conn.on('metrics', render);
+      conn.start().catch(() => {});
+    } catch {}
+  </script>
+</body>
+</html>

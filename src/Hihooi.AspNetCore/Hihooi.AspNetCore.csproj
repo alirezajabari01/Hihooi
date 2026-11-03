@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Hihooi.AspNetCore</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <Description>ASP.NET Core dashboard host extensions for Hihooi (bundled into Hihooi package).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\Hihooi\Hihooi.csproj" />
+    <ProjectReference Include="..\Hihooi.Core\Hihooi.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hihooi.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**\*" LogicalName="Hihooi.AspNetCore.wwwroot.%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Hihooi</RootNamespace>
+    <PackageId>Hihooi</PackageId>
+    <IsPackable>true</IsPackable>
+    <Title>Hihooi</Title>
+    <Description>Hihooi database replication middleware for .NET — Core, SQL Server provider, optional Redis buffer, and embedded ASP.NET Core dashboard in a single package.</Description>
+    <PackageTags>hihooi;replication;sqlserver;middleware;dashboard</PackageTags>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeBundledAssemblies</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="LICENSE" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundle internals into this package; do not publish as separate NuGet deps -->
+    <ProjectReference Include="..\Hihooi.Core\Hihooi.Core.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Hihooi.SqlServer\Hihooi.SqlServer.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Hihooi.Redis\Hihooi.Redis.csproj" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+  </ItemGroup>
+
+  <!-- AspNetCore dashboard DLL is built before pack and included via IncludeBundledAssemblies (Console hosts stay free of FrameworkReference). -->
+  <Target Name="BuildAspNetCoreBeforePack" BeforeTargets="GenerateNuspec;IncludeBundledAssemblies">
+    <MSBuild Projects="..\Hihooi.AspNetCore\Hihooi.AspNetCore.csproj"
+             Targets="Restore;Build"
+             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)" />
+  </Target>
+
+  <Target Name="IncludeBundledAssemblies">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(OutputPath)Hihooi.Core.dll" />
+      <BuildOutputInPackage Include="$(OutputPath)Hihooi.SqlServer.dll" />
+      <BuildOutputInPackage Include="$(OutputPath)Hihooi.Redis.dll" />
+      <BuildOutputInPackage Include="$(OutputPath)Hihooi.Core.xml" Condition="Exists('$(OutputPath)Hihooi.Core.xml')" />
+      <BuildOutputInPackage Include="$(OutputPath)Hihooi.SqlServer.xml" Condition="Exists('$(OutputPath)Hihooi.SqlServer.xml')" />
+      <BuildOutputInPackage Include="$(OutputPath)Hihooi.Redis.xml" Condition="Exists('$(OutputPath)Hihooi.Redis.xml')" />
+      <BuildOutputInPackage Include="..\Hihooi.AspNetCore\bin\$(Configuration)\$(TargetFramework)\Hihooi.AspNetCore.dll"
+                            Condition="Exists('..\Hihooi.AspNetCore\bin\$(Configuration)\$(TargetFramework)\Hihooi.AspNetCore.dll')" />
+      <BuildOutputInPackage Include="..\Hihooi.AspNetCore\bin\$(Configuration)\$(TargetFramework)\Hihooi.AspNetCore.xml"
+                            Condition="Exists('..\Hihooi.AspNetCore\bin\$(Configuration)\$(TargetFramework)\Hihooi.AspNetCore.xml')" />
+    </ItemGroup>
+  </Target>
+</Project>

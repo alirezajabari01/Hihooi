@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Hihooi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('hihooi-dashboard-theme');
+        if (t !== 'light' && t !== 'dark')
+          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    :root, html[data-theme="dark"] {
+      --bg: #101418;
+      --bg-elev: #181e24;
+      --bg-sunken: #0c1013;
+      --bg-hover: #212930;
+      --line: #2c353d;
+      --text: #e7ecea;
+      --muted: #93a19a;
+      --ok: #3cba6f;
+      --ok-soft: rgba(60, 186, 111, .14);
+      --warn: #e0a24a;
+      --warn-soft: rgba(224, 162, 74, .16);
+      --err: #f07167;
+      --err-soft: rgba(240, 113, 103, .14);
+      --shadow: 0 1px 0 rgba(255,255,255,.03);
+      color-scheme: dark;
+    }
+    html[data-theme="light"] {
+      --bg: #f3f4f2;
+      --bg-elev: #ffffff;
+      --bg-sunken: #e7eae7;
+      --bg-hover: #eef1ee;
+      --line: #d5dbd6;
+      --text: #17211c;
+      --muted: #5c6b64;
+      --ok: #0f7a3a;
+      --ok-soft: rgba(15, 122, 58, .1);
+      --warn: #9a6408;
+      --warn-soft: rgba(154, 100, 8, .12);
+      --err: #b42318;
+      --err-soft: rgba(180, 35, 24, .1);
+      --shadow: 0 1px 2px rgba(23, 33, 28, .04);
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+    .muted { color: var(--muted); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .err { color: var(--err); }
+
+    [hidden] { display: none !important; }
+    .app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; width: 100%; }
+    .side, .main, .content, header.top, .grid, .card, .table-wrap, .topo, .sparks { min-width: 0; max-width: 100%; }
+    .side {
+      background: var(--bg-sunken);
+      border-right: 1px solid var(--line);
+      padding: 18px 12px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .brand { padding: 4px 10px 0; }
+    .brand strong { display: block; font-size: 1.15rem; letter-spacing: -.02em; font-weight: 600; }
+    .brand span { color: var(--muted); font-size: .8rem; }
+    nav { display: flex; flex-direction: column; gap: 2px; }
+    .nav-label {
+      margin: 12px 10px 4px;
+      font-size: .72rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    nav button {
+      text-align: left;
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text);
+    }
+    nav button:hover { background: var(--bg-hover); }
+    nav button.active { background: var(--ok-soft); box-shadow: inset 3px 0 0 var(--ok); font-weight: 600; }
+
+    .main { min-width: 0; display: flex; flex-direction: column; }
+    header.top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      flex-wrap: wrap;
+    }
+    header.top h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -.02em; }
+    header.top p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+    .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
+      border-radius: 999px;
+      padding: 4px 10px 4px 8px;
+      font-size: .82rem;
+      box-shadow: var(--shadow);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.err { background: var(--err); }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
+      border-radius: 8px;
+      padding: 7px 12px;
+      box-shadow: var(--shadow);
+    }
+    .btn:hover { background: var(--bg-hover); }
+    .btn.primary { background: var(--ok); border-color: transparent; color: #f4fff8; font-weight: 600; }
+    html[data-theme="light"] .btn.primary { color: #fff; }
+    .btn:disabled { opacity: .55; cursor: default; }
+
+    .content { padding: 20px 24px 40px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .card {
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 14px 12px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .val { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 1.45rem; font-weight: 500; letter-spacing: -.03em; }
+    .hint { margin-top: 4px; color: var(--muted); font-size: .8rem; }
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+    .section-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; margin: 4px 0 12px; }
+    .section-head h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: .92rem; }
+    th { color: var(--muted); font-weight: 600; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; }
+    .table-wrap { overflow-x: auto; }
+    .banner {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: var(--bg-elev);
+      margin-bottom: 12px;
+    }
+    .banner.warn { background: var(--warn-soft); border-color: transparent; }
+    .banner.err { background: var(--err-soft); border-color: transparent; }
+    .banner.ok { background: var(--ok-soft); border-color: transparent; }
+
+    .topo { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .node {
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .node-kicker { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .node-title { font-size: 1.05rem; font-weight: 600; margin: 4px 0 8px; word-break: break-word; }
+    .node-row { display: flex; justify-content: space-between; gap: 8px; font-size: .86rem; padding: 3px 0; }
+    .ext-col { display: grid; gap: 10px; border-left: 2px solid var(--line); padding-left: 16px; }
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .78rem;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: var(--bg-sunken);
+    }
+    .status-tag.ok { background: var(--ok-soft); color: var(--ok); }
+    .status-tag.warn { background: var(--warn-soft); color: var(--warn); }
+    .status-tag.err { background: var(--err-soft); color: var(--err); }
+    .status-tag.unknown { color: var(--muted); }
+
+    .bars { display: flex; flex-direction: column; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 140px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+    .bar-track { height: 8px; background: var(--bg-sunken); border-radius: 99px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--ok); width: 0; }
+    .bar-fill.warn { background: var(--warn); }
+    .bar-fill.err { background: var(--err); }
+    .bar-fill.steel { background: #6d8f86; }
+
+    .sparks { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .spark svg { width: 100%; height: 56px; display: block; margin-top: 8px; }
+    .spark polyline { fill: none; stroke: var(--ok); stroke-width: 2; vector-effect: non-scaling-stroke; }
+    .spark.warn polyline { stroke: var(--warn); }
+    .spark.err polyline { stroke: var(--err); }
+
+    .errors { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow: auto; }
+    .errors li {
+      font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      font-size: .8rem;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .keyline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .keyline input, .form-grid input, .form-grid select {
+      background: var(--bg-sunken);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-width: 0;
+    }
+    .keyline input { width: min(280px, 70vw); }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    label.field { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; font-weight: 600; }
+    label.field span { color: var(--muted); font-weight: 500; }
+    pre.json {
+      margin: 0;
+      padding: 12px;
+      background: var(--bg-sunken);
+      border-radius: 8px;
+      overflow: auto;
+      font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      font-size: .78rem;
+      max-height: 320px;
+    }
+    .split { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    @media (max-width: 767px) {
+      .app { grid-template-columns: minmax(0, 1fr); }
+      .side {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 12px 20px 10px;
+        gap: 8px;
+        width: 100%;
+      }
+      nav { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; min-width: 0; max-width: 100%; }
+      .nav-label { display: none; }
+      nav button { white-space: nowrap; box-shadow: none; border: 1px solid var(--line); }
+      nav button.active { box-shadow: none; }
+      header.top, .content { padding-left: 20px; padding-right: 20px; }
+      .topo { grid-template-columns: 1fr; }
+      .ext-col { border-left: 0; padding-left: 0; border-top: 2px solid var(--line); padding-top: 12px; }
+      .bar-row { grid-template-columns: 1fr; gap: 4px; }
+      .val { font-size: 1.25rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand">
+        <strong>Hihooi</strong>
+        <span>Monitoring</span>
+      </div>
+      <nav aria-label="Dashboard pages">
+        <div class="nav-label">Monitor</div>
+        <button type="button" class="active" data-page="overview">Overview</button>
+        <button type="button" data-page="topology">Topology</button>
+        <button type="button" data-page="transactions">Transactions</button>
+        <button type="button" data-page="replication">Replication</button>
+        <button type="button" data-page="performance">Performance</button>
+        <button type="button" data-page="consistency">Consistency</button>
+        <button type="button" data-page="recovery">Recovery</button>
+        <button type="button" data-page="errors">Errors</button>
+        <div class="nav-label">Load</div>
+        <button type="button" data-page="stress">Stress Testing</button>
+        <button type="button" data-page="history">Test History</button>
+      </nav>
+    </aside>
+    <div class="main">
+      <header class="top">
+        <div>
+          <h1 id="pageTitle">Overview</h1>
+          <p id="pageSub">Process counters from this Hihooi client</p>
+        </div>
+        <div class="top-actions">
+          <span class="pill" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">Connecting</span></span>
+          <button type="button" class="btn" id="themeBtn">Light</button>
+          <button type="button" class="btn" id="keyToggle">Dashboard key</button>
+        </div>
+      </header>
+      <div class="content">
+        <div class="banner" id="keyBar" hidden>
+          <div class="keyline">
+            <label for="keyInput">Key for this browser tab</label>
+            <input id="keyInput" type="password" autocomplete="off" placeholder="X-Hihooi-Dashboard-Key" />
+            <button type="button" class="btn primary" id="keySave">Save key</button>
+            <span class="muted">Stored in sessionStorage only.</span>
+          </div>
+        </div>
+        <div class="banner err" id="alertBar" hidden></div>
+
+        <section class="page active" id="overview">
+          <div class="grid" id="kpi"></div>
+        </section>
+
+        <section class="page" id="topology">
+          <div class="section-head">
+            <h2>Primary and extensions</h2>
+            <span class="muted" id="topoMeta"></span>
+          </div>
+          <div class="topo" id="topo"></div>
+        </section>
+
+        <section class="page" id="transactions">
+          <div class="grid" id="txKpi"></div>
+          <div class="card" style="margin-top:12px">
+            <h3>Recent errors</h3>
+            <ul class="errors" id="txErrors"></ul>
+          </div>
+        </section>
+
+        <section class="page" id="replication">
+          <div class="section-head">
+            <h2>Apply position</h2>
+            <span class="mono" id="replLatest"></span>
+          </div>
+          <div class="card table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Extension</th>
+                  <th>Status</th>
+                  <th>Applied TSID</th>
+                  <th>Latest TSID</th>
+                  <th>Lag</th>
+                  <th>Inflight reads</th>
+                  <th>Apply failures</th>
+                </tr>
+              </thead>
+              <tbody id="replBody"></tbody>
+            </table>
+          </div>
+          <div class="card" style="margin-top:12px" id="lagBars"></div>
+        </section>
+
+        <section class="page" id="performance">
+          <p class="muted" id="perfNote">Sparklines use samples from the live metrics stream on this page.</p>
+          <div class="sparks" id="sparks"></div>
+        </section>
+
+        <section class="page" id="consistency">
+          <div class="card" id="modeCard"></div>
+          <div class="grid" id="consKpi" style="margin-top:12px"></div>
+          <div class="card" style="margin-top:12px">
+            <h3>Read split</h3>
+            <div class="bars" id="readBars"></div>
+            <p class="hint">Primary reads include fallback reads.</p>
+          </div>
+          <div class="card table-wrap" style="margin-top:12px">
+            <h3>Route reasons</h3>
+            <table>
+              <thead><tr><th>Reason</th><th>Count</th></tr></thead>
+              <tbody id="routeBody"></tbody>
+            </table>
+          </div>
+          <div class="card table-wrap" style="margin-top:12px">
+            <h3>Reads by extension</h3>
+            <table>
+              <thead><tr><th>Extension</th><th>Reads</th></tr></thead>
+              <tbody id="extReadBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page" id="recovery">
+          <div class="card" id="journalCard"></div>
+          <div class="card table-wrap" style="margin-top:12px">
+            <h3>Applied TSID by extension</h3>
+            <table>
+              <thead>
+                <tr><th>Extension</th><th>Applied TSID</th><th>Latest TSID</th><th>Lag</th></tr>
+              </thead>
+              <tbody id="recBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page" id="errors">
+          <div class="section-head">
+            <h2>Sanitized error log</h2>
+            <span class="muted" id="errCount"></span>
+          </div>
+          <div class="card"><ul class="errors" id="errList"></ul></div>
+        </section>
+
+        <section class="page" id="stress">
+          <div id="stressMissing" class="banner" hidden></div>
+          <form id="stressForm" class="card stack">
+            <div>
+              <h2 style="margin:0 0 4px;font-size:1rem">Start a run</h2>
+              <p class="muted" style="margin:0">Sends POST /stress/start on this host.</p>
+            </div>
+            <div class="form-grid">
+              <label class="field">Scenario
+                <select id="stressScenario" name="scenario">
+                  <option>Smoke</option>
+                  <option>ReadProduct</option>
+                  <option>ListSearch</option>
+                  <option>UpdateStock</option>
+                  <option>CreateOrder</option>
+                  <option>StockRace</option>
+                  <option>MixedReadWrite</option>
+                  <option>ConsistencyCheck</option>
+                </select>
+              </label>
+              <label class="field">Mode
+                <select id="stressMode" name="mode">
+                  <option>Hihooi</option>
+                  <option>DirectSql</option>
+                  <option>Compare</option>
+                </select>
+              </label>
+              <label class="field">Concurrency
+                <input id="stressConcurrency" name="concurrency" type="number" min="1" max="500" value="10" />
+              </label>
+              <label class="field">Duration (seconds)
+                <input id="stressDuration" name="durationSeconds" type="number" min="1" max="3600" value="30" />
+              </label>
+            </div>
+            <div class="split">
+              <button type="submit" class="btn primary" id="stressStart">Start</button>
+              <button type="button" class="btn" id="stressStop">Stop</button>
+            </div>
+          </form>
+          <div class="card" id="stressResult" style="margin-top:12px">
+            <h3>Last response</h3>
+            <pre class="json" id="stressOut">No request yet.</pre>
+          </div>
+        </section>
+
+        <section class="page" id="history">
+          <div class="section-head">
+            <h2>Saved runs</h2>
+            <button type="button" class="btn" id="historyRefresh">Refresh</button>
+          </div>
+          <div id="historyMissing" class="banner" hidden></div>
+          <div class="card table-wrap" id="historyWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Scenario</th>
+                  <th>Mode</th>
+                  <th>Concurrency</th>
+                  <th>Status</th>
+                  <th>Requests</th>
+                  <th>Success</th>
+                  <th>Failed</th>
+                  <th>Throughput</th>
+                  <th>p95 ms</th>
+                  <th>Check</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+  <script>
+    const BASE = '__HIHOOI_BASE__'.replace(/\/$/, '');
+    const KEY_NAME = 'hihooi-dashboard-key';
+    const THEME_NAME = 'hihooi-dashboard-theme';
+    const TITLES = {
+      overview: ['Overview', 'Process counters from this Hihooi client'],
+      topology: ['Topology', 'Primary and extension nodes'],
+      transactions: ['Transactions', 'Commits, rollbacks, and failed applies'],
+      replication: ['Replication', 'Lag, applied TSID, and latest TSID'],
+      performance: ['Performance', 'Client-side samples of the metrics stream'],
+      consistency: ['Consistency', 'Primary reads, extension reads, fallbacks, conflicts'],
+      recovery: ['Recovery', 'Journal folder and applied positions'],
+      errors: ['Errors', 'Recent errors with secrets removed'],
+      stress: ['Stress Testing', 'POST /stress/start on this host'],
+      history: ['Test History', 'GET /stress/history']
+    };
+    const MODE_LABELS = {
+      Gssi: 'GSSI — global strong snapshot isolation',
+      WeakSi: 'Weak SI — reads may use any extension',
+      RsiPc: 'RSI-PC — reads wait for a caught-up extension',
+      OneCopySerializability: 'One-copy serializability — apply finishes on every extension before the commit returns'
+    };
+
+    let live = null;
+    let configuredNodes = null;
+    let conn = null;
+    let signalLive = false;
+    const samples = [];
+    let stressProbe = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function esc(v) {
+      return String(v ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+    function pick(obj, ...keys) {
+      if (!obj || typeof obj !== 'object') return undefined;
+      for (const k of keys) {
+        if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== undefined && obj[k] !== null)
+          return obj[k];
+      }
+      const lower = {};
+      for (const k of Object.keys(obj)) lower[k.toLowerCase()] = obj[k];
+      for (const k of keys) {
+        const v = lower[k.toLowerCase()];
+        if (v !== undefined && v !== null) return v;
+      }
+      return undefined;
+    }
+    function num(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+    function fmt(v) {
+      if (v === undefined || v === null || v === '') return '—';
+      const n = Number(v);
+      if (!Number.isFinite(n)) return esc(v);
+      return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+    function fmtInt(v) {
+      if (v === undefined || v === null || v === '') return '—';
+      const n = Number(v);
+      if (!Number.isFinite(n)) return '—';
+      return Math.round(n).toLocaleString();
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem(THEME_NAME, theme);
+      $('themeBtn').textContent = theme === 'dark' ? 'Light' : 'Dark';
+    }
+    $('themeBtn').addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+    applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+
+    function showPage(id) {
+      document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('active', b.dataset.page === id));
+      document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === id));
+      const t = TITLES[id] || ['Hihooi', ''];
+      $('pageTitle').textContent = t[0];
+      $('pageSub').textContent = t[1];
+      document.title = t[0] + ' · Hihooi';
+      if (id === 'topology') refreshTopology();
+      if (id === 'replication') refreshReplication();
+      if (id === 'consistency') refreshConsistency();
+      if (id === 'stress' || id === 'history') probeStress(id === 'history');
+    }
+    document.querySelectorAll('nav button').forEach((b) => {
+      b.addEventListener('click', () => showPage(b.dataset.page));
+    });
+
+    function keyHeader() {
+      const key = sessionStorage.getItem(KEY_NAME);
+      return key ? { 'X-Hihooi-Dashboard-Key': key } : {};
+    }
+    $('keyToggle').addEventListener('click', () => {
+      $('keyBar').hidden = !$('keyBar').hidden;
+      if (!$('keyBar').hidden) $('keyInput').focus();
+    });
+    $('keySave').addEventListener('click', () => {
+      const value = $('keyInput').value.trim();
+      if (value) sessionStorage.setItem(KEY_NAME, value);
+      else sessionStorage.removeItem(KEY_NAME);
+      $('keyInput').value = '';
+      $('keyBar').hidden = true;
+      connectHub();
+      pollMetrics();
+    });
+    if (sessionStorage.getItem(KEY_NAME)) $('keyBar').hidden = true;
+
+    function setStatus(kind, text) {
+      $('statusDot').className = 'dot ' + (kind || '');
+      $('statusText').textContent = text;
+    }
+    function setAlert(text) {
+      const bar = $('alertBar');
+      if (!text) { bar.hidden = true; bar.textContent = ''; return; }
+      bar.hidden = false;
+      bar.textContent = text;
+    }
+
+    function extensionsOf(source) {
+      const raw = source && (source.extensions || source.Extensions) || [];
+      return Array.isArray(raw) ? raw.map(normExt) : [];
+    }
+    function normExt(e) {
+      const reported = pick(e, 'reported', 'Reported');
+      return {
+        id: String(pick(e, 'id', 'Id') ?? ''),
+        reported: reported === undefined ? true : !!reported,
+        isOnline: pick(e, 'isOnline', 'IsOnline'),
+        appliedTsId: pick(e, 'appliedTsId', 'AppliedTsId'),
+        lag: pick(e, 'lag', 'Lag'),
+        inflightReads: pick(e, 'inflightReads', 'InflightReads'),
+        applyFailures: pick(e, 'applyFailures', 'ApplyFailures')
+      };
+    }
+    function extStatus(e) {
+      if (!e.reported || typeof e.isOnline !== 'boolean')
+        return { key: 'unknown', label: 'No metrics yet' };
+      if (!e.isOnline) return { key: 'err', label: 'Offline' };
+      if (num(e.lag) > 0) return { key: 'warn', label: 'Behind' };
+      return { key: 'ok', label: 'Caught up' };
+    }
+    function latestTs() {
+      return pick(live, 'latestTsId', 'LatestTsId');
+    }
+    function errorsOf() {
+      const list = pick(live, 'errors', 'Errors') || [];
+      return Array.isArray(list) ? list : [];
+    }
+
+    function kpiCard(label, value, hint, tone) {
+      return '<div class="card"><h3>' + esc(label) + '</h3><div class="val ' + (tone || '') + '">' +
+        (value ?? '—') + '</div>' + (hint ? '<div class="hint">' + hint + '</div>' : '') + '</div>';
+    }
+
+    function render() {
+      if (!live || live.available === false) {
+        const reason = (live && (live.reason || live.Reason)) || 'Metrics are not available.';
+        setAlert(reason);
+        $('kpi').innerHTML = '';
+        return;
+      }
+      setAlert('');
+      renderOverview();
+      renderTopology();
+      renderTransactions();
+      renderReplication();
+      renderConsistency();
+      renderRecovery();
+      renderErrors();
+      renderSparks();
+    }
+
+    function renderOverview() {
+      const commits = num(pick(live, 'commits', 'Commits'));
+      const rollbacks = num(pick(live, 'rollbacks', 'Rollbacks'));
+      const failed = num(pick(live, 'failedApplies', 'FailedApplies'));
+      const nodes = currentExtensions();
+      const online = nodes.filter((e) => e.reported && e.isOnline === true).length;
+      const mode = String(pick(live, 'consistencyMode', 'ConsistencyMode') || '—');
+      const started = pick(live, 'startedUtc', 'StartedUtc');
+      let since = '';
+      if (started) {
+        const d = new Date(started);
+        if (!Number.isNaN(d.getTime())) since = 'Since ' + d.toLocaleString();
+      }
+      $('kpi').innerHTML = [
+        kpiCard('Commits', fmtInt(commits)),
+        kpiCard('Rollbacks', fmtInt(rollbacks), '', rollbacks ? 'warn' : ''),
+        kpiCard('Failed applies', fmtInt(failed), '', failed ? 'err' : 'ok'),
+        kpiCard('Primary reads', fmtInt(pick(live, 'primaryReads', 'PrimaryReads'))),
+        kpiCard('Extension reads', fmtInt(pick(live, 'extensionReads', 'ExtensionReads'))),
+        kpiCard('Fallbacks', fmtInt(pick(live, 'primaryFallbacks', 'PrimaryFallbacks'))),
+        kpiCard('Conflicts', fmtInt(pick(live, 'conflictsDetected', 'ConflictsDetected'))),
+        kpiCard('Parallel applies', fmtInt(pick(live, 'parallelAppliesStarted', 'ParallelAppliesStarted'))),
+        kpiCard('Latest TSID', fmtInt(latestTs()), since),
+        kpiCard('Extensions online', nodes.length ? (online + ' / ' + nodes.length) : '0', esc(MODE_LABELS[mode] || mode))
+      ].join('');
+    }
+
+    function currentExtensions() {
+      const liveExt = extensionsOf(live);
+      if (!configuredNodes || !configuredNodes.length) return liveExt;
+      const byId = new Map(liveExt.map((e) => [e.id.toLowerCase(), e]));
+      const seen = new Set();
+      const merged = configuredNodes.map((node) => {
+        const id = String(node.id || '').toLowerCase();
+        seen.add(id);
+        return byId.get(id) || node;
+      });
+      for (const e of liveExt) {
+        if (!seen.has(String(e.id || '').toLowerCase())) merged.push(e);
+      }
+      return merged;
+    }
+
+    function renderTopology() {
+      const nodes = currentExtensions();
+      const ts = latestTs();
+      const reads = pick(live, 'primaryReads', 'PrimaryReads');
+      $('topoMeta').textContent = nodes.length ? (nodes.length + ' extension' + (nodes.length === 1 ? '' : 's')) : 'No extensions';
+      const primary = '<article class="node"><div class="node-kicker">Primary</div><div class="node-title">primary</div>' +
+        '<div class="node-row"><span class="muted">Latest TSID</span><span class="mono">' + fmtInt(ts) + '</span></div>' +
+        '<div class="node-row"><span class="muted">Primary reads</span><span class="mono">' + fmtInt(reads) + '</span></div></article>';
+      const extHtml = nodes.length ? nodes.map(nodeCard).join('') :
+        '<article class="node"><div class="node-kicker">Extensions</div><p class="muted" style="margin:8px 0 0">No extensions are configured.</p></article>';
+      $('topo').innerHTML = primary + '<div class="ext-col">' + extHtml + '</div>';
+    }
+    function nodeCard(e) {
+      const st = extStatus(e);
+      return '<article class="node"><div class="node-kicker">Extension</div><div class="node-title">' + esc(e.id || 'extension') + '</div>' +
+        '<div class="node-row"><span class="status-tag ' + st.key + '"><span class="dot ' + (st.key === 'unknown' ? '' : st.key) + '"></span>' + esc(st.label) + '</span></div>' +
+        '<div class="node-row"><span class="muted">Applied TSID</span><span class="mono">' + fmtInt(e.appliedTsId) + '</span></div>' +
+        '<div class="node-row"><span class="muted">Lag</span><span class="mono">' + fmtInt(e.lag) + '</span></div>' +
+        '<div class="node-row"><span class="muted">Apply failures</span><span class="mono">' + fmtInt(e.applyFailures) + '</span></div></article>';
+    }
+
+    function renderTransactions() {
+      const failed = num(pick(live, 'failedApplies', 'FailedApplies'));
+      const rollbacks = num(pick(live, 'rollbacks', 'Rollbacks'));
+      $('txKpi').innerHTML = [
+        kpiCard('Commits', fmtInt(pick(live, 'commits', 'Commits'))),
+        kpiCard('Rollbacks', fmtInt(rollbacks), '', rollbacks ? 'warn' : ''),
+        kpiCard('Failed applies', fmtInt(failed), '', failed ? 'err' : 'ok')
+      ].join('');
+      const errs = errorsOf();
+      $('txErrors').innerHTML = errs.length
+        ? errs.slice(-12).map((e) => '<li>' + esc(e) + '</li>').join('')
+        : '<li class="muted">No errors recorded in this process.</li>';
+    }
+
+    function renderReplication() {
+      const ts = latestTs();
+      $('replLatest').textContent = 'Latest TSID ' + fmtInt(ts);
+      const nodes = currentExtensions();
+      $('replBody').innerHTML = nodes.length ? nodes.map((e) => {
+        const st = extStatus(e);
+        return '<tr><td class="mono">' + esc(e.id) + '</td><td><span class="status-tag ' + st.key + '">' + esc(st.label) + '</span></td>' +
+          '<td class="mono">' + fmtInt(e.appliedTsId) + '</td><td class="mono">' + fmtInt(ts) + '</td>' +
+          '<td class="mono ' + (num(e.lag) > 0 ? 'warn' : '') + '">' + fmtInt(e.lag) + '</td>' +
+          '<td class="mono">' + fmtInt(e.inflightReads) + '</td>' +
+          '<td class="mono ' + (num(e.applyFailures) > 0 ? 'err' : '') + '">' + fmtInt(e.applyFailures) + '</td></tr>';
+      }).join('') : '<tr><td colspan="7" class="muted">No extension metrics yet.</td></tr>';
+
+      const maxLag = Math.max(1, ...nodes.map((e) => num(e.lag)));
+      $('lagBars').innerHTML = '<h3>Lag</h3>' + (nodes.length ? '<div class="bars">' + nodes.map((e) => {
+        const width = Math.round((num(e.lag) / maxLag) * 100);
+        const tone = !e.reported || typeof e.isOnline !== 'boolean' ? 'steel' : (!e.isOnline ? 'err' : (num(e.lag) > 0 ? 'warn' : ''));
+        return '<div class="bar-row"><span class="mono">' + esc(e.id) + '</span><div class="bar-track"><div class="bar-fill ' + tone + '" style="width:' + width + '%"></div></div><span class="mono">' + fmtInt(e.lag) + '</span></div>';
+      }).join('') + '</div>' : '<p class="muted">No extension lag to chart.</p>');
+    }
+
+    function renderConsistency() {
+      const mode = String(pick(live, 'consistencyMode', 'ConsistencyMode') || '—');
+      $('modeCard').innerHTML = '<h3>Consistency mode</h3><div class="val" style="font-size:1.15rem">' + esc(MODE_LABELS[mode] || mode) + '</div>';
+      const primary = num(pick(live, 'primaryReads', 'PrimaryReads'));
+      const ext = num(pick(live, 'extensionReads', 'ExtensionReads'));
+      const fall = num(pick(live, 'primaryFallbacks', 'PrimaryFallbacks'));
+      const conf = num(pick(live, 'conflictsDetected', 'ConflictsDetected'));
+      $('consKpi').innerHTML = [
+        kpiCard('Primary reads', fmtInt(primary)),
+        kpiCard('Extension reads', fmtInt(ext)),
+        kpiCard('Fallbacks', fmtInt(fall), '', fall ? 'warn' : ''),
+        kpiCard('Conflicts', fmtInt(conf), '', conf ? 'warn' : '')
+      ].join('');
+      const total = primary + ext;
+      const pPct = total ? Math.round((primary / total) * 100) : 0;
+      const ePct = total ? Math.round((ext / total) * 100) : 0;
+      $('readBars').innerHTML =
+        barLine('Primary', pPct, fmtInt(primary), '') +
+        barLine('Extensions', ePct, fmtInt(ext), 'steel') +
+        barLine('Fallbacks', primary ? Math.min(100, Math.round((fall / Math.max(primary, 1)) * 100)) : 0, fmtInt(fall), fall ? 'warn' : '');
+      const reasons = pick(live, 'routeReasons', 'RouteReasons') || {};
+      const reasonRows = Object.keys(reasons);
+      $('routeBody').innerHTML = reasonRows.length
+        ? reasonRows.map((k) => '<tr><td>' + esc(k) + '</td><td class="mono">' + fmtInt(reasons[k]) + '</td></tr>').join('')
+        : '<tr><td colspan="2" class="muted">No routing reasons yet.</td></tr>';
+      const byExt = pick(live, 'readsByExtension', 'ReadsByExtension') || {};
+      const extRows = Object.keys(byExt);
+      $('extReadBody').innerHTML = extRows.length
+        ? extRows.map((k) => '<tr><td class="mono">' + esc(k) + '</td><td class="mono">' + fmtInt(byExt[k]) + '</td></tr>').join('')
+        : '<tr><td colspan="2" class="muted">No extension reads yet.</td></tr>';
+    }
+    function barLine(label, pct, value, tone) {
+      return '<div class="bar-row"><span>' + esc(label) + '</span><div class="bar-track"><div class="bar-fill ' + tone + '" style="width:' + pct + '%"></div></div><span class="mono">' + value + '</span></div>';
+    }
+
+    function renderRecovery() {
+      const journal = pick(live, 'journal', 'Journal') || {};
+      const configured = !!(pick(journal, 'configured', 'Configured'));
+      const available = !!(pick(journal, 'available', 'Available'));
+      const note = pick(journal, 'note', 'Note') || 'Journal status has not arrived yet.';
+      const tone = !configured ? 'warn' : (available ? 'ok' : 'err');
+      const label = !configured ? 'Not configured' : (available ? 'Reachable' : 'Not reachable');
+      $('journalCard').innerHTML = '<h3>Journal folder</h3><p><span class="status-tag ' + tone + '">' + label + '</span></p><p style="margin:8px 0 0">' + esc(note) + '</p>';
+      const ts = latestTs();
+      const nodes = currentExtensions();
+      $('recBody').innerHTML = nodes.length ? nodes.map((e) =>
+        '<tr><td class="mono">' + esc(e.id) + '</td><td class="mono">' + fmtInt(e.appliedTsId) + '</td><td class="mono">' + fmtInt(ts) + '</td><td class="mono">' + fmtInt(e.lag) + '</td></tr>'
+      ).join('') : '<tr><td colspan="4" class="muted">No applied TSID has been reported.</td></tr>';
+    }
+
+    function renderErrors() {
+      const errs = errorsOf();
+      $('errCount').textContent = errs.length ? (errs.length + ' lines') : 'Empty';
+      $('errList').innerHTML = errs.length
+        ? errs.map((e) => '<li>' + esc(e) + '</li>').join('')
+        : '<li class="muted">No errors recorded in this process.</li>';
+    }
+
+    function pushSample(m) {
+      if (!m || m.available === false) return;
+      const now = Date.now();
+      const prev = samples[samples.length - 1];
+      if (prev && now - prev.t < 400) return;
+      const commits = num(pick(m, 'commits', 'Commits'));
+      const rollbacks = num(pick(m, 'rollbacks', 'Rollbacks'));
+      const failed = num(pick(m, 'failedApplies', 'FailedApplies'));
+      const primary = num(pick(m, 'primaryReads', 'PrimaryReads'));
+      const ext = num(pick(m, 'extensionReads', 'ExtensionReads'));
+      const lags = extensionsOf(m).map((e) => num(e.lag));
+      const maxLag = lags.length ? Math.max(...lags) : 0;
+      const dt = prev ? Math.max(0.001, (now - prev.t) / 1000) : 1;
+      const rate = (cur, old) => prev ? Math.max(0, (cur - old) / dt) : 0;
+      samples.push({
+        t: now,
+        commitRate: rate(commits, prev ? prev.commits : commits),
+        rollbackRate: rate(rollbacks, prev ? prev.rollbacks : rollbacks),
+        failRate: rate(failed, prev ? prev.failed : failed),
+        primaryRate: rate(primary, prev ? prev.primary : primary),
+        extRate: rate(ext, prev ? prev.ext : ext),
+        maxLag, commits, rollbacks, failed, primary, ext
+      });
+      if (samples.length > 60) samples.shift();
+      renderSparks();
+    }
+    function sparkSvg(values) {
+      const w = 320, h = 56;
+      if (!values.length) return '<svg viewBox="0 0 ' + w + ' ' + h + '"></svg>';
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const span = (max - min) || 1;
+      const pts = values.map((v, i) => {
+        const x = values.length === 1 ? w / 2 : (i / (values.length - 1)) * (w - 4) + 2;
+        const y = h - ((v - min) / span) * (h - 8) - 4;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '" /></svg>';
+    }
+    function renderSparks() {
+      const series = [
+        ['Commit rate', samples.map((s) => s.commitRate), ' /s', ''],
+        ['Rollback rate', samples.map((s) => s.rollbackRate), ' /s', 'warn'],
+        ['Failed apply rate', samples.map((s) => s.failRate), ' /s', 'err'],
+        ['Primary read rate', samples.map((s) => s.primaryRate), ' /s', ''],
+        ['Extension read rate', samples.map((s) => s.extRate), ' /s', ''],
+        ['Max extension lag', samples.map((s) => s.maxLag), '', 'warn']
+      ];
+      $('perfNote').textContent = samples.length < 2
+        ? 'Waiting for a second live sample. Rates appear after the metrics stream moves.'
+        : ('Last ' + samples.length + ' samples from the metrics stream.');
+      $('sparks').innerHTML = series.map(([label, values, unit, tone]) => {
+        const last = values.length ? values[values.length - 1] : 0;
+        const hot = tone && last > 0 ? tone : '';
+        return '<article class="card spark ' + hot + '"><h3>' + esc(label) + '</h3><div class="val ' + hot + '">' +
+          fmt(last) + '<span style="font-size:.8rem;color:var(--muted)">' + esc(unit) + '</span></div>' + sparkSvg(values) + '</article>';
+      }).join('');
+    }
+
+    async function fetchJson(url, options) {
+      const opts = options || {};
+      const headers = Object.assign({ 'Accept': 'application/json' }, keyHeader(), opts.headers || {});
+      const res = await fetch(url, Object.assign({}, opts, { headers: headers, credentials: 'same-origin' }));
+      const text = await res.text();
+      let body = null;
+      if (text) {
+        try { body = JSON.parse(text); } catch { body = text; }
+      }
+      return { ok: res.ok, status: res.status, body, text };
+    }
+
+    function applyMetrics(m) {
+      live = m;
+      const up = m && m.available !== false;
+      if (!up) setStatus('err', 'Not available');
+      else if (signalLive) setStatus('ok', 'Live');
+      else setStatus('warn', 'Polling');
+      render();
+      if (up) pushSample(m);
+    }
+
+    async function pollMetrics() {
+      try {
+        const res = await fetchJson(BASE + '/api/metrics');
+        if (res.status === 401) {
+          setStatus('err', 'Key required');
+          setAlert('This dashboard needs a key. Open Dashboard key and save it for this tab.');
+          $('keyBar').hidden = false;
+          return;
+        }
+        if (!res.ok || !res.body || typeof res.body !== 'object') {
+          applyMetrics({ available: false, reason: 'Metrics request failed (' + res.status + ').' });
+          return;
+        }
+        applyMetrics(res.body);
+      } catch {
+        applyMetrics({ available: false, reason: 'Metrics API is unreachable.' });
+      }
+    }
+
+    async function refreshTopology() {
+      try {
+        const res = await fetchJson(BASE + '/api/topology');
+        if (!res.ok || !res.body) return;
+        const body = res.body;
+        configuredNodes = extensionsOf(body);
+        if (!live) live = { available: true };
+        if (pick(body, 'latestTsId', 'LatestTsId') !== undefined)
+          live.latestTsId = pick(body, 'latestTsId', 'LatestTsId');
+        const primary = pick(body, 'primary', 'Primary');
+        if (primary && pick(primary, 'primaryReads', 'PrimaryReads') !== undefined)
+          live.primaryReads = pick(primary, 'primaryReads', 'PrimaryReads');
+        render();
+      } catch { /* metrics stream still paints the page */ }
+    }
+    async function refreshReplication() {
+      try {
+        const res = await fetchJson(BASE + '/api/replication');
+        if (!res.ok || !res.body) return;
+        if (!live) live = { available: true };
+        const ts = pick(res.body, 'latestTsId', 'LatestTsId');
+        if (ts !== undefined) live.latestTsId = ts;
+        const ext = res.body.extensions || res.body.Extensions;
+        if (ext) live.extensions = ext;
+        render();
+      } catch { /* ignore */ }
+    }
+    async function refreshConsistency() {
+      try {
+        const res = await fetchJson(BASE + '/api/consistency');
+        if (!res.ok || !res.body) return;
+        live = Object.assign({}, live || { available: true }, res.body, { available: true });
+        render();
+      } catch { /* ignore */ }
+    }
+
+    async function connectHub() {
+      if (typeof signalR === 'undefined') return;
+      if (conn) {
+        try { await conn.stop(); } catch { /* already stopped */ }
+        conn = null;
+      }
+      signalLive = false;
+      try {
+        conn = new signalR.HubConnectionBuilder()
+          .withUrl(BASE + '/hubs/metrics', {
+            accessTokenFactory: () => sessionStorage.getItem(KEY_NAME) || '',
+            headers: keyHeader()
+          })
+          .withAutomaticReconnect()
+          .build();
+        conn.on('metrics', (m) => { signalLive = true; applyMetrics(m); });
+        conn.onreconnecting(() => { signalLive = false; setStatus('warn', 'Reconnecting'); });
+        conn.onreconnected(() => { signalLive = true; setStatus('ok', 'Live'); });
+        conn.onclose(() => { signalLive = false; if (live && live.available !== false) setStatus('warn', 'Polling'); });
+        await conn.start();
+        signalLive = true;
+        if (live && live.available !== false) setStatus('ok', 'Live');
+      } catch {
+        signalLive = false;
+      }
+    }
+
+    const STRESS_HELP = 'This host has no /stress/start route. Start the Hihooi local stress host (tools/HihooiLocalStress). It serves this dashboard and POST /stress/start, POST /stress/stop, GET /stress/status, GET /stress/history on the same origin.';
+
+    function showStressAvailability(ok, message) {
+      $('stressMissing').hidden = ok;
+      $('stressForm').hidden = !ok;
+      $('stressResult').hidden = !ok;
+      $('historyMissing').hidden = ok;
+      $('historyWrap').hidden = !ok;
+      if (!ok) {
+        $('stressMissing').textContent = message || STRESS_HELP;
+        $('historyMissing').textContent = message || STRESS_HELP;
+      }
+    }
+    async function probeStress(loadHistory) {
+      try {
+        const res = await fetchJson('/stress/history');
+        if (res.status === 404) {
+          stressProbe = false;
+          showStressAvailability(false, STRESS_HELP);
+          return;
+        }
+        stressProbe = true;
+        showStressAvailability(true);
+        if (loadHistory || $('history').classList.contains('active'))
+          renderHistory(res.body);
+      } catch {
+        stressProbe = false;
+        showStressAvailability(false, 'The stress API is unreachable. ' + STRESS_HELP);
+      }
+    }
+    function renderHistory(body) {
+      let rows = [];
+      if (Array.isArray(body)) rows = body;
+      else if (body && typeof body === 'object')
+        rows = body.recent || body.Recent || body.items || body.Items || body.runs || body.Runs || body.history || body.History || [];
+      if (!Array.isArray(rows)) rows = [];
+      $('historyBody').innerHTML = rows.length ? rows.map((r) => {
+        const when = pick(r, 'startUtc', 'StartUtc');
+        const whenText = when ? new Date(when).toLocaleString() : '—';
+        const check = pick(r, 'consistency', 'Consistency');
+        let checkText = '—';
+        if (check && typeof check === 'object') {
+          const passed = pick(check, 'passed', 'Passed');
+          checkText = passed === true ? 'Passed' : (passed === false ? 'Failed' : '—');
+        }
+        const status = String(pick(r, 'status', 'Status') || '—');
+        const tone = /fail/i.test(status) ? 'err' : (/run/i.test(status) ? 'warn' : 'ok');
+        return '<tr><td>' + esc(whenText) + '</td><td>' + esc(pick(r, 'scenario', 'Scenario') || '—') +
+          '</td><td>' + esc(pick(r, 'mode', 'Mode') || '—') + '</td><td class="mono">' + fmtInt(pick(r, 'concurrency', 'Concurrency')) +
+          '</td><td class="' + tone + '">' + esc(status) + '</td><td class="mono">' + fmtInt(pick(r, 'totalRequests', 'TotalRequests')) +
+          '</td><td class="mono">' + fmtInt(pick(r, 'success', 'Success')) + '</td><td class="mono">' + fmtInt(pick(r, 'failed', 'Failed')) +
+          '</td><td class="mono">' + fmt(pick(r, 'throughputPerSec', 'ThroughputPerSec')) + '</td><td class="mono">' + fmt(pick(r, 'p95Ms', 'P95Ms')) +
+          '</td><td>' + esc(checkText) + '</td></tr>';
+      }).join('') : '<tr><td colspan="11" class="muted">No saved runs.</td></tr>';
+    }
+
+    $('stressForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const concurrency = Number($('stressConcurrency').value);
+      const durationSeconds = Number($('stressDuration').value);
+      if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 500) {
+        $('stressOut').textContent = 'Concurrency must be a whole number from 1 to 500.';
+        return;
+      }
+      if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 3600) {
+        $('stressOut').textContent = 'Duration must be a whole number of seconds from 1 to 3600.';
+        return;
+      }
+      const payload = {
+        scenario: $('stressScenario').value,
+        mode: $('stressMode').value,
+        concurrency,
+        durationSeconds
+      };
+      $('stressStart').disabled = true;
+      try {
+        const res = await fetchJson('/stress/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.status === 404) {
+          showStressAvailability(false, STRESS_HELP);
+          $('stressOut').textContent = STRESS_HELP;
+          return;
+        }
+        $('stressOut').textContent = typeof res.body === 'string' ? res.body : JSON.stringify(res.body, null, 2);
+        if (res.ok) probeStress(true);
+      } catch (err) {
+        $('stressOut').textContent = 'Request failed. ' + (err && err.message ? err.message : '');
+      } finally {
+        $('stressStart').disabled = false;
+      }
+    });
+    $('stressStop').addEventListener('click', async () => {
+      try {
+        const res = await fetchJson('/stress/stop', { method: 'POST' });
+        if (res.status === 404) {
+          showStressAvailability(false, STRESS_HELP);
+          return;
+        }
+        $('stressOut').textContent = typeof res.body === 'string' ? res.body : JSON.stringify(res.body, null, 2);
+      } catch (err) {
+        $('stressOut').textContent = 'Stop failed. ' + (err && err.message ? err.message : '');
+      }
+    });
+    $('historyRefresh').addEventListener('click', () => probeStress(true));
+
+    pollMetrics();
+    setInterval(pollMetrics, 2000);
+    connectHub();
+  </script>
+</body>
+</html>
