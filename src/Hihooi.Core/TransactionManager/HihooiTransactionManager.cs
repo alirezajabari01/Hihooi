@@ -4,6 +4,8 @@ using Hihooi.Core.Buffer;
 using Hihooi.Core.Configuration;
 using Hihooi.Core.Consistency;
 using Hihooi.Core.Diagnostics;
+using Hihooi.Core.Diagnostics.Health;
+using Hihooi.Core.Diagnostics.Tracing;
 using Hihooi.Core.Indexes;
 using Hihooi.Core.Model;
 using Hihooi.Core.Parsing;
@@ -30,6 +32,7 @@ public sealed class HihooiTransactionManager : IAsyncDisposable
     private readonly SemaphoreSlim _startGate = new(1, 1);
     private readonly object _extractorGate = new();
     private bool _started;
+    private int _disposeOnce;
 
     public HihooiTransactionManager(
         HihooiOptions options,
@@ -40,7 +43,9 @@ public sealed class HihooiTransactionManager : IAsyncDisposable
         IRecoveryJournal? journal = null,
         HihooiMetrics? metrics = null,
         IAppliedTsIdStore? appliedStore = null,
-        HihooiEventStore? events = null)
+        HihooiEventStore? events = null,
+        IHihooiTracer? tracer = null,
+        INodeHealthMonitor? health = null)
     {
         Options = options;
         _provider = provider;
@@ -49,6 +54,8 @@ public sealed class HihooiTransactionManager : IAsyncDisposable
         _logger = logger;
         Metrics = metrics ?? new HihooiMetrics();
         Events = events ?? new HihooiEventStore();
+        Tracer = tracer ?? NullHihooiTracer.Instance;
+        Health = health;
         if (!string.IsNullOrWhiteSpace(options.RecoveryJournalDirectory))
         {
             _journal = journal ?? new FileRecoveryJournal(options.RecoveryJournalDirectory);
@@ -59,7 +66,7 @@ public sealed class HihooiTransactionManager : IAsyncDisposable
             _journal = journal;
             _appliedStore = appliedStore;
         }
-        Router = new QueryRouter(_indexes, _extensions, () => _tsIdAssigner.LatestAssigned, Metrics);
+        Router = new QueryRouter(_indexes, _extensions, () => _tsIdAssigner.LatestAssigned, Metrics, health);
     }
 
     public HihooiOptions Options { get; }
@@ -69,8 +76,21 @@ public sealed class HihooiTransactionManager : IAsyncDisposable
     public ReplicaIndexes Indexes => _indexes;
     public HihooiMetrics Metrics { get; }
     public HihooiEventStore Events { get; }
+    public IHihooiTracer Tracer { get; }
+    public INodeHealthMonitor? Health { get; }
     public long LatestTsId => _tsIdAssigner.LatestAssigned;
     public long PendingPublishedEstimate => Math.Max(0, LatestTsId - _extensions.MinAppliedTsId());
+
+    public async Task<IReadOnlyList<ReplicationLogEntry>> GetUnappliedLogAsync(
+        string extensionId,
+        int take = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var applied = _extensions.Snapshot()
+            .FirstOrDefault(e => string.Equals(e.Id, extensionId, StringComparison.OrdinalIgnoreCase))
+            ?.AppliedTsId ?? 0;
+        return await _buffer.ReadLogAfterAsync(applied, take, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -291,13 +311,16 @@ public sealed class HihooiTransactionManager : IAsyncDisposable
         _extensions.Register(new ExtensionInfo { Id = id, ConnectionString = connectionString });
         Metrics.UpsertExtension(id, m => { m.IsOnline = true; m.AppliedTsId = 0; });
         var extractor = new ExtractorService(
-            id, connectionString, _provider, _buffer, _extensions, _logger, Metrics, _appliedStore);
+            id, connectionString, _provider, _buffer, _extensions, _logger, Metrics, _appliedStore, Tracer, Events);
         extractor.Start();
         lock (_extractorGate) _extractors.Add(extractor);
     }
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposeOnce, 1) != 0)
+            return;
+
         List<ExtractorService> copy;
         lock (_extractorGate)
         {

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Hihooi.Core.Configuration;
 using Hihooi.Core.Consistency;
 using Hihooi.Core.Diagnostics;
+using Hihooi.Core.Model;
 using Hihooi.Core.TransactionManager;
 
 namespace Hihooi;
@@ -71,8 +72,18 @@ public sealed class HihooiClient : IAsyncDisposable
 
     public HihooiMetricsSnapshot GetMetricsSnapshot() => _tm.Metrics.Snapshot();
 
+    public Task<IReadOnlyList<ReplicationLogEntry>> GetUnappliedLogAsync(
+        string extensionId,
+        int take = 50,
+        CancellationToken cancellationToken = default)
+        => _tm.GetUnappliedLogAsync(extensionId, take, cancellationToken);
+
     public IReadOnlyList<HihooiEvent> GetRecentEvents(int take = 200, string? typeFilter = null)
         => _tm.Events.Snapshot(take, typeFilter);
 
-    public ValueTask DisposeAsync() => _tm.DisposeAsync();
+    /// <summary>
+    /// No-op under DI: <see cref="HihooiTransactionManager"/> is a separate singleton owned by the container.
+    /// Disposing here would double-dispose extractors/CTS when the host shuts down.
+    /// </summary>
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

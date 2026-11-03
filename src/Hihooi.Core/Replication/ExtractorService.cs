@@ -1,6 +1,7 @@
 using Hihooi.Core.Abstractions;
 using Hihooi.Core.Algorithms;
 using Hihooi.Core.Diagnostics;
+using Hihooi.Core.Diagnostics.Tracing;
 using Hihooi.Core.Model;
 using Hihooi.Core.Recovery;
 using Hihooi.Core.Routing;
@@ -21,11 +22,14 @@ public sealed class ExtractorService : IAsyncDisposable
     private readonly ILogger? _logger;
     private readonly HihooiMetrics? _metrics;
     private readonly IAppliedTsIdStore? _appliedStore;
+    private readonly IHihooiTracer _tracer;
+    private readonly HihooiEventStore? _events;
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private readonly SemaphoreSlim _applyGate = new(Environment.ProcessorCount);
     private readonly HashSet<long> _appliedExact = new();
     private readonly object _dedupeGate = new();
+    private int _disposeOnce;
 
     public ExtractorService(
         string extensionId,
@@ -35,7 +39,9 @@ public sealed class ExtractorService : IAsyncDisposable
         ExtensionRegistry registry,
         ILogger? logger = null,
         HihooiMetrics? metrics = null,
-        IAppliedTsIdStore? appliedStore = null)
+        IAppliedTsIdStore? appliedStore = null,
+        IHihooiTracer? tracer = null,
+        HihooiEventStore? events = null)
     {
         _extensionId = extensionId;
         _connectionString = connectionString;
@@ -45,6 +51,8 @@ public sealed class ExtractorService : IAsyncDisposable
         _logger = logger;
         _metrics = metrics;
         _appliedStore = appliedStore;
+        _tracer = tracer ?? NullHihooiTracer.Instance;
+        _events = events;
     }
 
     public long ContiguousApplied => _tracker.ContiguousApplied;
@@ -104,15 +112,31 @@ public sealed class ExtractorService : IAsyncDisposable
         await _applyGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            using var scope = _tracer.StartRequest(
+                "replication.apply",
+                RequestKind.ReplicationApply,
+                ts.WriteStatements.FirstOrDefault()?.Sql);
+            if (scope is not null)
+            {
+                scope.Trace.SelectedNodeId = _extensionId;
+                scope.SetAttr(scope.RootSpan, "tsid", ts.TsId.ToString());
+                scope.SetAttr(scope.RootSpan, "extension_id", _extensionId);
+            }
+
             var applied = false;
             try
             {
+                _events?.Emit(HihooiEventType.ApplyStarted, "Extractor", $"Apply TSID {ts.TsId} on {_extensionId}", tsId: ts.TsId);
+                var applySpan = scope?.StartSpan("sql.execute", "Extractor", nodeId: _extensionId);
                 await ApplyOneAsync(ts, ct).ConfigureAwait(false);
+                if (applySpan is not null) scope!.EndSpan(applySpan);
                 applied = true;
                 lock (_dedupeGate) _appliedExact.Add(ts.TsId);
+                _events?.Emit(HihooiEventType.ApplyCompleted, "Extractor", $"Applied TSID {ts.TsId} on {_extensionId}", tsId: ts.TsId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                scope?.Fail(ex.Message);
                 _logger?.LogError(ex, "Apply failed for TSID {TsId} on {ExtensionId}", ts.TsId, _extensionId);
                 _registry.SetOnline(_extensionId, false);
                 _metrics?.RecordFailedApply();
@@ -122,6 +146,7 @@ public sealed class ExtractorService : IAsyncDisposable
                     m.ApplyFailures++;
                 });
                 _metrics?.RecordError($"Apply TSID {ts.TsId} on {_extensionId}: {ex.Message}");
+                _events?.Emit(HihooiEventType.ApplyFailed, "Extractor", ex.Message, tsId: ts.TsId, status: "Error");
             }
 
             if (applied)
@@ -184,13 +209,20 @@ public sealed class ExtractorService : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_cts is null) return;
-        _cts.Cancel();
+        if (Interlocked.Exchange(ref _disposeOnce, 1) != 0)
+            return;
+
+        var cts = _cts;
+        if (cts is null) return;
+
+        try { cts.Cancel(); } catch (ObjectDisposedException) { }
+
         if (_loop is not null)
         {
             try { await _loop.ConfigureAwait(false); } catch { /* ignore */ }
         }
-        _cts.Dispose();
+
+        cts.Dispose();
         _applyGate.Dispose();
     }
 }

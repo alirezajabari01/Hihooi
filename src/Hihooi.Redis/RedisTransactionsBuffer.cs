@@ -145,6 +145,36 @@ public sealed class RedisTransactionsBuffer : ITransactionsBuffer, IAsyncDisposa
         }
     }
 
+    public async ValueTask<IReadOnlyList<ReplicationLogEntry>> ReadLogAfterAsync(
+        long exclusiveTsId,
+        int take = 50,
+        CancellationToken cancellationToken = default)
+    {
+        take = Math.Clamp(take, 1, 500);
+        try
+        {
+            var db = _mux.GetDatabase();
+            var ids = await db.SortedSetRangeByScoreAsync(
+                LogKey, exclusiveTsId + 1, double.PositiveInfinity, take: take).ConfigureAwait(false);
+            var list = new List<ReplicationLogEntry>(ids.Length);
+            foreach (var id in ids)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var payload = await db.HashGetAsync(PayloadKey, id!).ConfigureAwait(false);
+                if (payload.IsNullOrEmpty) continue;
+                var dto = JsonSerializer.Deserialize<TStateDto>((string)payload!, JsonOpts);
+                if (dto is null) continue;
+                var state = FromDto(dto);
+                list.Add(ReplicationLogEntry.From(state));
+            }
+            return list;
+        }
+        catch (RedisException ex)
+        {
+            throw new InvalidOperationException($"Hihooi Redis log read failed after TSID {exclusiveTsId}: {ex.Message}", ex);
+        }
+    }
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private static TStateDto ToDto(TransactionState s) => new()

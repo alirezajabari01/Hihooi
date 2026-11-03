@@ -35,6 +35,9 @@ public sealed class HihooiOptions
     public string DashboardPath { get; set; } = "/hihooi";
 
     public DashboardAuthOptions DashboardAuth { get; set; } = new();
+
+    /// <summary>Request tracing, health probes, and dashboard telemetry.</summary>
+    public ObservabilityOptions Observability { get; set; } = new();
 }
 
 /// <summary>Authentication / authorization for the embedded dashboard.</summary>

@@ -1,3 +1,4 @@
+using Hihooi.Core.Diagnostics.Tracing;
 using Hihooi.Core.Mapping;
 using Hihooi.Core.TransactionManager;
 
@@ -10,12 +11,14 @@ namespace Hihooi;
 public sealed class HihooiDatabase : IHihooiDatabase
 {
     private readonly HihooiTransactionManager _tm;
+    private readonly IHihooiTracer _tracer;
     private readonly SemaphoreSlim _startGate = new(1, 1);
     private volatile bool _started;
 
-    public HihooiDatabase(HihooiTransactionManager transactionManager)
+    public HihooiDatabase(HihooiTransactionManager transactionManager, IHihooiTracer? tracer = null)
     {
         _tm = transactionManager ?? throw new ArgumentNullException(nameof(transactionManager));
+        _tracer = tracer ?? transactionManager.Tracer;
     }
 
     public async Task<int> ExecuteAsync(
@@ -25,8 +28,25 @@ public sealed class HihooiDatabase : IHihooiDatabase
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sql);
         await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
-        await using var session = _tm.OpenSession();
-        return await session.ExecuteNonQueryAsync(sql, parameters, cancellationToken).ConfigureAwait(false);
+        using var scope = _tracer.StartRequest(nameof(ExecuteAsync), RequestKind.Write, sql, parameters);
+        var previous = HihooiTraceContext.Scope;
+        HihooiTraceContext.Scope = scope;
+        try
+        {
+            await using var session = _tm.OpenSession();
+            var affected = await session.ExecuteNonQueryAsync(sql, parameters, cancellationToken).ConfigureAwait(false);
+            if (scope is not null) scope.Trace.RowsAffected = affected;
+            return affected;
+        }
+        catch (Exception ex)
+        {
+            scope?.Fail(ex.Message);
+            throw;
+        }
+        finally
+        {
+            HihooiTraceContext.Scope = previous;
+        }
     }
 
     public async Task<IReadOnlyList<T>> QueryAsync<T>(
@@ -36,9 +56,33 @@ public sealed class HihooiDatabase : IHihooiDatabase
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sql);
         await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
-        await using var session = _tm.OpenSession();
-        var rows = await session.QueryAsync(sql, parameters, cancellationToken).ConfigureAwait(false);
-        return RowMapper.MapAll<T>(rows);
+        using var scope = _tracer.StartRequest(nameof(QueryAsync), RequestKind.Read, sql, parameters);
+        var previous = HihooiTraceContext.Scope;
+        HihooiTraceContext.Scope = scope;
+        try
+        {
+            await using var session = _tm.OpenSession();
+            var mapSpan = scope?.StartSpan("result.materialize", "RowMapper");
+            var rows = await session.QueryAsync(sql, parameters, cancellationToken).ConfigureAwait(false);
+            var mapped = RowMapper.MapAll<T>(rows);
+            if (mapSpan is not null)
+            {
+                scope!.SetAttr(mapSpan, "mapped_type", typeof(T).Name);
+                scope.SetAttr(mapSpan, "rows", mapped.Count.ToString());
+                scope.EndSpan(mapSpan);
+            }
+            if (scope is not null) scope.Trace.RowsReturned = mapped.Count;
+            return mapped;
+        }
+        catch (Exception ex)
+        {
+            scope?.Fail(ex.Message);
+            throw;
+        }
+        finally
+        {
+            HihooiTraceContext.Scope = previous;
+        }
     }
 
     public async Task<T?> QueryFirstOrDefaultAsync<T>(

@@ -76,4 +76,22 @@ public sealed class InMemoryTransactionsBuffer : ITransactionsBuffer
     {
         lock (_gate) return _log.ToList();
     }
+
+    public ValueTask<IReadOnlyList<ReplicationLogEntry>> ReadLogAfterAsync(
+        long exclusiveTsId,
+        int take = 50,
+        CancellationToken cancellationToken = default)
+    {
+        take = Math.Clamp(take, 1, 500);
+        lock (_gate)
+        {
+            IReadOnlyList<ReplicationLogEntry> rows = _log
+                .Where(s => s.TsId > exclusiveTsId)
+                .OrderBy(s => s.TsId)
+                .Take(take)
+                .Select(ReplicationLogEntry.From)
+                .ToList();
+            return ValueTask.FromResult(rows);
+        }
+    }
 }

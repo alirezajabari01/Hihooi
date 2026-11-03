@@ -2,7 +2,7 @@
 
 ## Status (final delivery run)
 
-**Phase:** Public API redesign (v0.4.0) — consumers use `IHihooiDatabase`; Client/Session are advanced/engine details. See `Documentation/Public-API-Redesign.md`.
+**Phase:** Observability dashboard + distributed tracing (v0.5.0) on top of `IHihooiDatabase`. See `Documentation/Dashboard-Observability.md`.
 
 ### Baseline → Final
 - Baseline tests: 26 passed

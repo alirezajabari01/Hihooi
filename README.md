@@ -1,6 +1,6 @@
 # Hihooi (.NET)
 
-Single NuGet package **`Hihooi`** (v0.4.0): Core algorithms, SQL Server provider, Redis buffer, and embedded ASP.NET Core dashboard.
+Single NuGet package **`Hihooi`** (v0.5.0): Core algorithms, SQL Server provider, Redis buffer, and embedded ASP.NET Core observability dashboard with per-request tracing.
 
 ## Install
 ```bash
@@ -44,15 +44,19 @@ Writes use `ExecuteAsync`. Reads use `QueryAsync` / `QueryFirstOrDefaultAsync` /
 o.EnableDashboard = true;
 o.DashboardPath = "/hihooi";
 o.DashboardAuth.ApiKey = "secret";
+o.Observability.Enabled = true;
+o.Observability.StorageDirectory = "./hihooi-traces"; // optional durable JSONL
 builder.Services.AddHihooiDashboard();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHihooiDashboard();
 ```
 
+Open `/hihooi` for Live Traffic and Trace Waterfall (routing candidates, SQL, spans). See `Documentation/Dashboard-Observability.md`.
+
 Sample hosts: `samples/Hihooi.Sample`, `samples/Hihooi.WebHost` (PackageReference only).
 
 **Target:** `net8.0`. Provider today: SQL Server only (`UsePostgreSQL` / `UseMySQL` throw `NotSupportedException` until implemented).
 
 ## Docs
-See `Documentation/` (including `Public-API-Redesign.md`).
+See `Documentation/` (including `Public-API-Redesign.md` and `Dashboard-Observability.md`).

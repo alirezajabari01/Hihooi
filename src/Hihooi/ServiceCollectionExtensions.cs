@@ -2,6 +2,8 @@ using Hihooi.Core.Abstractions;
 using Hihooi.Core.Buffer;
 using Hihooi.Core.Configuration;
 using Hihooi.Core.Diagnostics;
+using Hihooi.Core.Diagnostics.Health;
+using Hihooi.Core.Diagnostics.Tracing;
 using Hihooi.Core.Parsing;
 using Hihooi.Core.Recovery;
 using Hihooi.Core.TransactionManager;
@@ -46,6 +48,39 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<HihooiEventStore>();
         services.AddSingleton<ISqlAnalyzer, LightweightSqlAnalyzer>();
 
+        services.AddSingleton<IHihooiTraceStore>(sp =>
+        {
+            var o = sp.GetRequiredService<HihooiOptions>().Observability;
+            if (!string.IsNullOrWhiteSpace(o.StorageDirectory))
+                return new FileTraceStore(o.StorageDirectory!, o.InMemoryCapacity, o.Retention);
+            return new InMemoryTraceStore(o.InMemoryCapacity, o.Retention);
+        });
+        services.AddSingleton<IHihooiTracer>(sp =>
+        {
+            var o = sp.GetRequiredService<HihooiOptions>().Observability;
+            if (!o.Enabled) return NullHihooiTracer.Instance;
+            return new HihooiTracer(o, sp.GetRequiredService<IHihooiTraceStore>());
+        });
+
+        services.AddSingleton<INodeHealthProbe, SqlServerHealthProbe>();
+        services.AddSingleton<INodeHealthMonitor>(sp =>
+        {
+            var opt = sp.GetRequiredService<HihooiOptions>();
+            return new NodeHealthMonitor(
+                sp.GetRequiredService<INodeHealthProbe>(),
+                opt.Observability,
+                () =>
+                {
+                    var list = new List<(string Id, string Role, string ConnectionString, string? Provider)>
+                    {
+                        ("primary", "Primary", opt.PrimaryConnectionString, "SqlServer")
+                    };
+                    foreach (var e in opt.Extensions)
+                        list.Add((e.Id, "Extension", e.ConnectionString, "SqlServer"));
+                    return list;
+                });
+        });
+
         if (!services.Any(d => d.ServiceType == typeof(ITransactionsBuffer)))
         {
             if (!string.IsNullOrWhiteSpace(options.RedisConnectionString))
@@ -75,7 +110,6 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddSingleton<HihooiTransactionManager>();
-        // Kept for dashboard/ops compatibility; prefer IHihooiDatabase in application code.
         services.AddSingleton<HihooiClient>();
         services.AddSingleton<HihooiDatabase>();
         services.AddSingleton<IHihooiDatabase>(sp => sp.GetRequiredService<HihooiDatabase>());

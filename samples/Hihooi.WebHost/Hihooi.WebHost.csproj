@@ -8,7 +8,7 @@
     <RestoreAdditionalProjectSources>$(MSBuildThisFileDirectory)..\..\artifacts</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Hihooi" Version="0.4.0" />
+    <PackageReference Include="Hihooi" Version="0.5.1" />
   </ItemGroup>
 </Project>
 

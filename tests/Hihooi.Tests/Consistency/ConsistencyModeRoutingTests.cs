@@ -69,6 +69,23 @@ public class ConsistencyModeRoutingTests
     }
 
     [Fact]
+    public void Eligible_replicas_are_chosen_round_robin()
+    {
+        var idx = new ReplicaIndexes();
+        var reg = new ExtensionRegistry();
+        reg.Register(new ExtensionInfo { Id = "ext1", ConnectionString = "ext1", AppliedTsId = 5, IsOnline = true });
+        reg.Register(new ExtensionInfo { Id = "ext2", ConnectionString = "ext2", AppliedTsId = 5, IsOnline = true });
+        var router = new QueryRouter(idx, reg, () => 5L, new HihooiMetrics());
+        var a = router.RouteRead(ReadItems(), ConsistencyLevel.WeakSi);
+        var b = router.RouteRead(ReadItems(), ConsistencyLevel.WeakSi);
+        Assert.Equal(RouteTargetKind.Extension, a.Target);
+        Assert.Equal(RouteTargetKind.Extension, b.Target);
+        Assert.NotEqual(a.ExtensionId, b.ExtensionId);
+        Assert.Contains(a.Candidates, c => c.Selected);
+        Assert.Contains(b.Candidates, c => !c.Selected && c.RejectReason == "round-robin-waiting-turn");
+    }
+
+    [Fact]
     public void OneSr_routes_to_any_extension()
     {
         var (router, _, _) = Setup(applied: 0);
